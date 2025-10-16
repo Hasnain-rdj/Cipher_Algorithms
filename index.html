@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classical Cryptography Suite</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 Classical Cryptography Suite</h1>
+            <p>Encrypt and decrypt text using seven classical cipher algorithms</p>
+        </header>
+
+        <main>
+            <div class="cipher-selector">
+                <label for="cipherType">Select Cipher Algorithm:</label>
+                <select id="cipherType" onchange="changeCipher()">
+                    <option value="caesar">Caesar Cipher</option>
+                    <option value="affine">Affine Cipher</option>
+                    <option value="vigenere">Vigenère Cipher</option>
+                    <option value="playfair">Playfair Cipher</option>
+                    <option value="hill">Hill Cipher</option>
+                    <option value="railfence">Rail Fence Cipher</option>
+                    <option value="rowtransposition">Row Transposition Cipher</option>
+                </select>
+            </div>
+
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="inputText">Input Text:</label>
+                    <textarea id="inputText" placeholder="Enter text to encrypt/decrypt"></textarea>
+                </div>
+
+                <!-- Dynamic key inputs will be generated here -->
+                <div id="keyInputs" class="key-inputs"></div>
+
+                <div class="buttons">
+                    <button onclick="encryptText()" class="btn btn-encrypt">🔒 Encrypt</button>
+                    <button onclick="decryptText()" class="btn btn-decrypt">🔓 Decrypt</button>
+                    <button onclick="clearAll()" class="btn btn-clear">🗑️ Clear</button>
+                </div>
+            </div>
+
+            <div class="output-section">
+                <div class="output-group">
+                    <label for="outputText">Result:</label>
+                    <textarea id="outputText" readonly placeholder="Results will appear here"></textarea>
+                </div>
+                <div id="errorMessage" class="error-message"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
