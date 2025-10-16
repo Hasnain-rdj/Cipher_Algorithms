@@ -140,6 +140,54 @@ input:focus, textarea:focus {
     color: #555;
 }
 
+/* ===== Matrix Inputs for Hill Cipher ===== */
+.matrix-inputs {
+    margin: 1rem 0;
+}
+
+.matrix-grid label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+}
+
+.matrix-container {
+    display: inline-block;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px solid #ddd;
+}
+
+.matrix-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.matrix-row:last-child {
+    margin-bottom: 0;
+}
+
+.matrix-element {
+    width: 60px;
+    height: 40px;
+    padding: 5px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+}
+
+.matrix-element:focus {
+    border-color: #3498db;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
 /* ===== Buttons ===== */
 .buttons {
     display: flex;
@@ -292,5 +340,15 @@ input:focus, textarea:focus {
     
     main, .input-section {
         padding: 1rem;
+    }
+    
+    .matrix-element {
+        width: 45px;
+        height: 35px;
+        font-size: 0.8rem;
+    }
+    
+    .matrix-container {
+        padding: 0.5rem;
     }
 }

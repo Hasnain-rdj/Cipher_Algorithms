@@ -31,8 +31,95 @@ function modInverse(a, m) {
     return -1;
 }
 
-function matrixDeterminant(matrix) {
-    return (matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]) % 26;
+function calculateDeterminant(matrix) {
+    const n = matrix.length;
+    
+    if (n === 1) {
+        return matrix[0][0];
+    }
+    
+    if (n === 2) {
+        return (matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]) % 26;
+    }
+    
+    let det = 0;
+    for (let j = 0; j < n; j++) {
+        const minor = getMinor(matrix, 0, j);
+        det += matrix[0][j] * Math.pow(-1, j) * calculateDeterminant(minor);
+    }
+    
+    return det % 26;
+}
+
+function getMinor(matrix, row, col) {
+    const n = matrix.length;
+    const minor = [];
+    
+    for (let i = 0; i < n; i++) {
+        if (i === row) continue;
+        const minorRow = [];
+        for (let j = 0; j < n; j++) {
+            if (j === col) continue;
+            minorRow.push(matrix[i][j]);
+        }
+        minor.push(minorRow);
+    }
+    
+    return minor;
+}
+
+function calculateMatrixInverse(matrix) {
+    const n = matrix.length;
+    const det = calculateDeterminant(matrix);
+    const detInv = modInverse(((det % 26) + 26) % 26, 26);
+    
+    if (detInv === -1) {
+        throw new Error('Matrix is not invertible');
+    }
+    
+    if (n === 1) {
+        return [[detInv]];
+    }
+    
+    if (n === 2) {
+        return [
+            [(matrix[1][1] * detInv) % 26, (-matrix[0][1] * detInv + 26 * 26) % 26],
+            [(-matrix[1][0] * detInv + 26 * 26) % 26, (matrix[0][0] * detInv) % 26]
+        ];
+    }
+    
+    // For larger matrices, use cofactor method
+    const adjugate = [];
+    for (let i = 0; i < n; i++) {
+        adjugate[i] = [];
+        for (let j = 0; j < n; j++) {
+            const minor = getMinor(matrix, i, j);
+            const cofactor = Math.pow(-1, i + j) * calculateDeterminant(minor);
+            adjugate[j][i] = (cofactor * detInv % 26 + 26) % 26; // Transpose while creating
+        }
+    }
+    
+    return adjugate;
+}
+
+function matrixMultiply(matrixA, matrixB) {
+    const rowsA = matrixA.length;
+    const colsA = matrixA[0].length;
+    const colsB = matrixB[0].length;
+    
+    const result = [];
+    for (let i = 0; i < rowsA; i++) {
+        result[i] = [];
+        for (let j = 0; j < colsB; j++) {
+            let sum = 0;
+            for (let k = 0; k < colsA; k++) {
+                sum += matrixA[i][k] * matrixB[k][j];
+            }
+            result[i][j] = sum % 26;
+        }
+    }
+    
+    return result;
 }
 
 // ===== Caesar Cipher =====
@@ -215,43 +302,39 @@ function playfairDecrypt(text, keyword) {
 }
 
 // ===== Hill Cipher =====
-function hillEncrypt(text, matrix) {
+function hillEncrypt(text, matrix, size) {
     const processedText = preprocessText(text);
-    if (processedText.length % 2 !== 0) {
-        text += 'X'; // Pad with X if odd length
+    
+    // Pad text to be multiple of matrix size
+    let paddedText = processedText;
+    while (paddedText.length % size !== 0) {
+        paddedText += 'X';
     }
     
     let result = '';
     
-    for (let i = 0; i < processedText.length; i += 2) {
-        const p1 = processedText[i].charCodeAt(0) - 65;
-        const p2 = processedText[i + 1].charCodeAt(0) - 65;
+    for (let i = 0; i < paddedText.length; i += size) {
+        // Create plaintext vector
+        const plaintextVector = [];
+        for (let j = 0; j < size; j++) {
+            plaintextVector.push([paddedText[i + j].charCodeAt(0) - 65]);
+        }
         
-        const c1 = (matrix[0][0] * p1 + matrix[0][1] * p2) % 26;
-        const c2 = (matrix[1][0] * p1 + matrix[1][1] * p2) % 26;
+        // Multiply matrix with plaintext vector
+        const ciphertextVector = matrixMultiply(matrix, plaintextVector);
         
-        result += String.fromCharCode(c1 + 65);
-        result += String.fromCharCode(c2 + 65);
+        // Convert back to characters
+        for (let j = 0; j < size; j++) {
+            result += String.fromCharCode((ciphertextVector[j][0] % 26 + 26) % 26 + 65);
+        }
     }
     
     return result;
 }
 
-function hillDecrypt(text, matrix) {
-    const det = matrixDeterminant(matrix);
-    const detInv = modInverse(((det % 26) + 26) % 26, 26);
-    
-    if (detInv === -1) {
-        throw new Error('Matrix is not invertible');
-    }
-    
-    // Calculate inverse matrix
-    const invMatrix = [
-        [(matrix[1][1] * detInv) % 26, (-matrix[0][1] * detInv + 26 * 26) % 26],
-        [(-matrix[1][0] * detInv + 26 * 26) % 26, (matrix[0][0] * detInv) % 26]
-    ];
-    
-    return hillEncrypt(text, invMatrix);
+function hillDecrypt(text, matrix, size) {
+    const invMatrix = calculateMatrixInverse(matrix);
+    return hillEncrypt(text, invMatrix, size);
 }
 
 // ===== Rail Fence Cipher =====
@@ -504,7 +587,37 @@ function generateKeyInputs() {
     }
 }
 
-
+function generateHillMatrix() {
+    const matrixSizeSelect = document.getElementById('matrixSize');
+    const customSizeInput = document.getElementById('customSizeInput');
+    const matrixInputsDiv = document.getElementById('matrixInputs');
+    
+    let size;
+    if (matrixSizeSelect.value === 'custom') {
+        customSizeInput.style.display = 'block';
+        size = parseInt(document.getElementById('customSize').value) || 2;
+    } else {
+        customSizeInput.style.display = 'none';
+        size = parseInt(matrixSizeSelect.value);
+    }
+    
+    // Generate matrix input grid
+    let matrixHTML = '<div class="matrix-grid">';
+    matrixHTML += `<label>Enter ${size}×${size} Matrix Elements:</label>`;
+    matrixHTML += '<div class="matrix-container">';
+    
+    for (let i = 0; i < size; i++) {
+        matrixHTML += '<div class="matrix-row">';
+        for (let j = 0; j < size; j++) {
+            const defaultVal = i === j ? '1' : '0'; // Identity matrix as default
+            matrixHTML += `<input type="number" id="matrix_${i}_${j}" value="${defaultVal}" placeholder="0" class="matrix-element">`;
+        }
+        matrixHTML += '</div>';
+    }
+    
+    matrixHTML += '</div></div>';
+    matrixInputsDiv.innerHTML = matrixHTML;
+}
 
 function validateInputs() {
     const inputText = document.getElementById('inputText').value.trim();
@@ -548,22 +661,36 @@ function validateInputs() {
             return { text: inputText, keyword: pKey };
             
         case 'hill':
-            const hillA = parseInt(document.getElementById('hillA').value);
-            const hillB = parseInt(document.getElementById('hillB').value);
-            const hillC = parseInt(document.getElementById('hillC').value);
-            const hillD = parseInt(document.getElementById('hillD').value);
+            const matrixSizeSelect = document.getElementById('matrixSize');
+            let size;
             
-            if (isNaN(hillA) || isNaN(hillB) || isNaN(hillC) || isNaN(hillD)) {
-                throw new Error('All matrix elements must be valid numbers');
+            if (matrixSizeSelect.value === 'custom') {
+                size = parseInt(document.getElementById('customSize').value);
+                if (isNaN(size) || size < 2 || size > 10) {
+                    throw new Error('Custom matrix size must be between 2 and 10');
+                }
+            } else {
+                size = parseInt(matrixSizeSelect.value);
             }
             
-            const matrix = [[hillA, hillB], [hillC, hillD]];
-            const det = matrixDeterminant(matrix);
+            const matrix = [];
+            for (let i = 0; i < size; i++) {
+                matrix[i] = [];
+                for (let j = 0; j < size; j++) {
+                    const value = parseInt(document.getElementById(`matrix_${i}_${j}`).value);
+                    if (isNaN(value)) {
+                        throw new Error(`Matrix element at position (${i+1},${j+1}) must be a valid number`);
+                    }
+                    matrix[i][j] = value;
+                }
+            }
+            
+            const det = calculateDeterminant(matrix);
             if (gcd(((det % 26) + 26) % 26, 26) !== 1) {
                 throw new Error('Matrix is not invertible. Choose different values.');
             }
             
-            return { text: inputText, matrix };
+            return { text: inputText, matrix, size };
             
         case 'railfence':
             const rails = parseInt(document.getElementById('rails').value);
@@ -601,7 +728,7 @@ function encryptText() {
                 result = playfairEncrypt(inputs.text, inputs.keyword);
                 break;
             case 'hill':
-                result = hillEncrypt(inputs.text, inputs.matrix);
+                result = hillEncrypt(inputs.text, inputs.matrix, inputs.size);
                 break;
             case 'railfence':
                 result = railFenceEncrypt(preprocessText(inputs.text, true), inputs.rails);
@@ -637,7 +764,7 @@ function decryptText() {
                 result = playfairDecrypt(preprocessText(inputs.text), inputs.keyword);
                 break;
             case 'hill':
-                result = hillDecrypt(preprocessText(inputs.text), inputs.matrix);
+                result = hillDecrypt(preprocessText(inputs.text), inputs.matrix, inputs.size);
                 break;
             case 'railfence':
                 result = railFenceDecrypt(preprocessText(inputs.text, true), inputs.rails);
