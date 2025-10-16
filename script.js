@@ -400,34 +400,36 @@ function railFenceDecrypt(text, rails) {
 }
 
 // ===== Row Transposition Cipher =====
-function rowTranspositionEncrypt(text, keyword) {
-    const key = keyword.toUpperCase();
-    const keyOrder = key.split('').map((char, index) => ({ char, index }))
-        .sort((a, b) => a.char.localeCompare(b.char))
-        .map((item, sortedIndex) => ({ originalIndex: item.index, order: sortedIndex }))
-        .sort((a, b) => a.originalIndex - b.originalIndex)
-        .map(item => item.order);
-    
-    const cols = key.length;
+function rowTranspositionEncrypt(text, numericalKey) {
+    // Parse numerical key (e.g., "4 3 1 2 5 6" -> [4,3,1,2,5,6])
+    const keyArray = numericalKey.trim().split(/\s+/).map(num => parseInt(num));
+    const cols = keyArray.length;
     const rows = Math.ceil(text.length / cols);
     
-    // Create grid
-    const grid = Array(rows).fill().map(() => Array(cols).fill(''));
+    // Validate key - should be a permutation of numbers 1 to n
+    const sortedKey = [...keyArray].sort((a, b) => a - b);
+    for (let i = 0; i < cols; i++) {
+        if (sortedKey[i] !== i + 1) {
+            throw new Error(`Invalid key: Key should contain numbers 1 to ${cols} without repetition`);
+        }
+    }
     
-    // Fill grid row by row
+    // Create grid and fill row by row
+    const grid = Array(rows).fill().map(() => Array(cols).fill(''));
     let textIndex = 0;
+    
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols && textIndex < text.length; c++) {
             grid[r][c] = text[textIndex++];
         }
     }
     
-    // Read columns in key order
+    // Read columns in the order specified by the key
     let result = '';
-    for (let order = 0; order < cols; order++) {
-        const colIndex = keyOrder.indexOf(order);
+    for (let keyPos = 1; keyPos <= cols; keyPos++) {
+        const colIndex = keyArray.indexOf(keyPos);
         for (let r = 0; r < rows; r++) {
-            if (grid[r][colIndex]) {
+            if (grid[r][colIndex] && grid[r][colIndex] !== '') {
                 result += grid[r][colIndex];
             }
         }
@@ -436,42 +438,50 @@ function rowTranspositionEncrypt(text, keyword) {
     return result;
 }
 
-function rowTranspositionDecrypt(text, keyword) {
-    const key = keyword.toUpperCase();
-    const keyOrder = key.split('').map((char, index) => ({ char, index }))
-        .sort((a, b) => a.char.localeCompare(b.char))
-        .map((item, sortedIndex) => ({ originalIndex: item.index, order: sortedIndex }))
-        .sort((a, b) => a.originalIndex - b.originalIndex)
-        .map(item => item.order);
-    
-    const cols = key.length;
+function rowTranspositionDecrypt(text, numericalKey) {
+    // Parse numerical key (e.g., "4 3 1 2 5 6" -> [4,3,1,2,5,6])
+    const keyArray = numericalKey.trim().split(/\s+/).map(num => parseInt(num));
+    const cols = keyArray.length;
     const rows = Math.ceil(text.length / cols);
     const fullRows = Math.floor(text.length / cols);
-    const partialCols = text.length % cols;
+    const remainder = text.length % cols;
     
-    // Calculate column lengths
-    const colLengths = Array(cols).fill(fullRows);
-    for (let i = 0; i < partialCols; i++) {
-        const colIndex = keyOrder.indexOf(i);
-        colLengths[colIndex]++;
-    }
-    
-    // Create grid and fill column by column in key order
-    const grid = Array(rows).fill().map(() => Array(cols).fill(''));
-    let textIndex = 0;
-    
-    for (let order = 0; order < cols; order++) {
-        const colIndex = keyOrder.indexOf(order);
-        for (let r = 0; r < colLengths[colIndex]; r++) {
-            grid[r][colIndex] = text[textIndex++];
+    // Validate key
+    const sortedKey = [...keyArray].sort((a, b) => a - b);
+    for (let i = 0; i < cols; i++) {
+        if (sortedKey[i] !== i + 1) {
+            throw new Error(`Invalid key: Key should contain numbers 1 to ${cols} without repetition`);
         }
     }
     
-    // Read row by row
+    // Calculate which columns have extra characters
+    // In the original grid, columns 0 to (remainder-1) have an extra character
+    const colLengths = Array(cols).fill(fullRows);
+    for (let i = 0; i < remainder; i++) {
+        colLengths[i]++;
+    }
+    
+    // Create grid
+    const grid = Array(rows).fill().map(() => Array(cols).fill(''));
+    let textIndex = 0;
+    
+    // Fill columns in the order they appear in the encrypted text (key order 1,2,3...)
+    for (let keyPos = 1; keyPos <= cols; keyPos++) {
+        const originalColIndex = keyArray.indexOf(keyPos);
+        const columnLength = colLengths[originalColIndex];
+        
+        for (let r = 0; r < columnLength; r++) {
+            if (textIndex < text.length) {
+                grid[r][originalColIndex] = text[textIndex++];
+            }
+        }
+    }
+    
+    // Read row by row to reconstruct original text
     let result = '';
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-            if (grid[r][c]) {
+            if (grid[r][c] && grid[r][c] !== '') {
                 result += grid[r][c];
             }
         }
@@ -578,8 +588,13 @@ function generateKeyInputs() {
             keyInputsDiv.innerHTML = `
                 <div class="key-row">
                     <div class="key-input">
-                        <label for="transKey">Keyword:</label>
-                        <input type="text" id="transKey" value="ZEBRAS" placeholder="Enter keyword (letters only)">
+                        <label for="transKey">Numerical Key (column order):</label>
+                        <input type="text" id="transKey" value="4 3 1 2 5 6" placeholder="e.g., 4 3 1 2 5 6 (space-separated numbers)">
+                    </div>
+                </div>
+                <div class="key-row">
+                    <div class="key-input">
+                        <label style="font-size: 0.8rem; color: #666;">Example: Key "4 3 1 2 5 6" means column 1 becomes position 4, column 2 becomes position 3, etc.</label>
                     </div>
                 </div>
             `;
@@ -701,9 +716,30 @@ function validateInputs() {
             
         case 'rowtransposition':
             const tKey = document.getElementById('transKey').value.trim();
-            if (!tKey || !tKey.match(/^[A-Za-z]+$/)) {
-                throw new Error('Keyword must contain only letters');
+            if (!tKey) {
+                throw new Error('Please enter a numerical key');
             }
+            
+            // Validate numerical key format
+            const keyParts = tKey.split(/\s+/);
+            const keyNumbers = [];
+            
+            for (let part of keyParts) {
+                const num = parseInt(part);
+                if (isNaN(num) || num < 1) {
+                    throw new Error('Key must contain only positive integers separated by spaces');
+                }
+                keyNumbers.push(num);
+            }
+            
+            // Validate key is a proper permutation (1 to n without repetition)
+            const sortedKey = [...keyNumbers].sort((a, b) => a - b);
+            for (let i = 0; i < keyNumbers.length; i++) {
+                if (sortedKey[i] !== i + 1) {
+                    throw new Error(`Invalid key: Key should contain numbers 1 to ${keyNumbers.length} without repetition`);
+                }
+            }
+            
             return { text: inputText, keyword: tKey };
     }
 }
