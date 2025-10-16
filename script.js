@@ -789,4 +789,35 @@ function clearAll() {
 // ===== Initialize Application =====
 document.addEventListener('DOMContentLoaded', function() {
     changeCipher(); // Initialize with default cipher
+    
+    // Improve mobile experience
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+        // Add touch-friendly class
+        document.body.classList.add('touch-device');
+        
+        // Prevent double-tap zoom on buttons
+        const buttons = document.querySelectorAll('.btn');
+        buttons.forEach(button => {
+            button.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                this.click();
+            });
+        });
+    }
+    
+    // Improve Android keyboard handling
+    if (/Android/i.test(navigator.userAgent)) {
+        document.body.classList.add('android-device');
+        
+        // Handle virtual keyboard
+        const inputs = document.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                // Small delay to ensure the keyboard is shown
+                setTimeout(() => {
+                    this.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            });
+        });
+    }
 });
