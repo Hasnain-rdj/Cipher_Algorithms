@@ -499,9 +499,7 @@ input:focus, textarea:focus {
     .matrix-row {
         gap: 4px;
         margin-bottom: 4px;
-        min-width: -webkit-fill-available;
-        min-width: -moz-available;
-        min-width: fit-content;
+        white-space: nowrap;
     }
     
     .matrix-element {
